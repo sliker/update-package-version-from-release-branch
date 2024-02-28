@@ -25,7 +25,13 @@ describe('action', () => {
 
   it('should return and skip if is not a release branch', async () => {
     const mockContext = {
-      ref: 'refs/heads/feat/1.2.3'
+      ref: 'refs/heads/feat/1.2.3',
+      payload: {
+        pusher: {
+          name: 'test',
+          email: ''
+        }
+      }
     }
 
     github.context = mockContext
@@ -43,7 +49,12 @@ describe('action', () => {
   it('should return and skip bump if the versions are the same', async () => {
     const mockContext = {
       ref: 'refs/heads/release/1.2.3',
-      sha: '1234567890abcdef'
+      payload: {
+        pusher: {
+          name: 'test',
+          email: ''
+        }
+      }
     }
 
     github.context = mockContext
@@ -64,7 +75,12 @@ describe('action', () => {
   it('should fail if cannot determine the version from the branch name', async () => {
     const mockContext = {
       ref: 'refs/heads/releases/foo',
-      sha: '1234567890abcdef'
+      payload: {
+        pusher: {
+          name: 'test',
+          email: ''
+        }
+      }
     }
 
     github.context = mockContext
@@ -81,7 +97,12 @@ describe('action', () => {
   it('should update package version with the version from the branch name', async () => {
     const mockContext = {
       ref: 'refs/heads/release/1.2.3',
-      sha: '1234567890abcdef'
+      payload: {
+        pusher: {
+          name: 'test',
+          email: ''
+        }
+      }
     }
 
     github.context = mockContext

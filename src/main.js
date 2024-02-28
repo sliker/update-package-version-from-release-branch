@@ -10,7 +10,7 @@ const editJsonFile = require('edit-json-file')
  */
 async function run() {
   try {
-    const ref = github.context.ref
+    const { ref } = github.context
     if (!ref.includes('release')) {
       core.info('Not on release branch, skipping version bump.')
       return
@@ -35,11 +35,16 @@ async function run() {
     packageFile.set('version', version)
     packageFile.save()
 
-    await exec(`git pull origin ${branchName}`)
+    const { name, email } = github.context.payload.pusher
+    await exec(`git config user.name ${name}`)
+    await exec(`git config user.email ${email}`)
+    await exec('git config pull.rebase true')
+
     await exec('git add package.json')
     await exec(
       `git commit -m "Automatically bump version from ${packageVersion} to ${version}"`
     )
+    await exec(`git pull origin ${branchName}`)
     await exec(`git push origin ${branchName}`)
   } catch (error) {
     console.error(error)
