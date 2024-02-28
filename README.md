@@ -5,13 +5,54 @@
 
 ## Usage
 
-```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
+**Non-protected branch**:
 
-  - name: Update Package Version
-    id: update-package
-    uses: sliker/update-package-version-from-release-branch@v1.0.0
+```yaml
+name: Bump package version
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump package version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        id: checkout
+        uses: actions/checkout@v4
+      - name: Update Package Version
+        uses: sliker/update-package-version-from-release-branch@v1.0.0
+```
+
+**Protected branch**:
+
+```yaml
+name: Bump package version
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump package version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GB_TOKEN }}
+      - name: Update Package Version
+        uses: sliker/update-package-version-from-release-branch@v1.0.0
 ```
