@@ -1,5 +1,8 @@
+const github = require('@actions/github')
 const core = require('@actions/core')
-const { wait } = require('./wait')
+const { exec } = require('@actions/exec')
+
+const editJsonFile = require('edit-json-file')
 
 /**
  * The main function for the action.
@@ -7,19 +10,39 @@ const { wait } = require('./wait')
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    const ref = github.context.ref
+    if (!ref.includes('release')) {
+      core.info('Not on release branch, skipping version bump.')
+      return
+    }
+    const branchName = ref.replace('refs/heads/', '')
+    const version = branchName.match(/release\/(\d+\.\d+\.\d+)/)?.[1]
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    if (!version) {
+      core.setFailed('Could not determine version from branch name')
+      return
+    }
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const packageFile = editJsonFile('./package.json')
+    const packageVersion = packageFile.get('version')
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    if (packageVersion === version) {
+      core.info('Version already set, skipping bump.')
+      return
+    }
+
+    core.info(`Current version to set: ${version}`)
+    packageFile.set('version', version)
+    packageFile.save()
+
+    await exec(`git pull origin ${branchName}`)
+    await exec('git add package.json')
+    await exec(
+      `git commit -m "Automatically bump version from ${packageVersion} to ${version}"`
+    )
+    await exec(`git push origin ${branchName}`)
   } catch (error) {
+    console.error(error)
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
   }

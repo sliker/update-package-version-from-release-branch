@@ -2,95 +2,102 @@
  * Unit tests for the action's main functionality, src/main.js
  */
 const core = require('@actions/core')
+const github = require('@actions/github')
+const editJsonFile = require('edit-json-file')
+
 const main = require('../src/main')
 
-// Mock the GitHub Actions core library
-const debugMock = jest.spyOn(core, 'debug').mockImplementation()
-const getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
+const infoMock = jest.spyOn(core, 'info').mockImplementation()
 const setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
-const setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation()
-
-// Mock the action's main function
 const runMock = jest.spyOn(main, 'run')
 
-// Other utilities
-const timeRegex = /^\d{2}:\d{2}:\d{2}/
+jest.mock('@actions/github')
+jest.mock('edit-json-file')
+jest.mock('@actions/exec', () => ({
+  ...jest.requireActual('@actions/exec'),
+  exec: jest.fn()
+}))
 
 describe('action', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('sets the time output', async () => {
-    // Set the action's inputs as return values from core.getInput()
-    getInputMock.mockImplementation(name => {
-      switch (name) {
-        case 'milliseconds':
-          return '500'
-        default:
-          return ''
-      }
-    })
+  it('should return and skip if is not a release branch', async () => {
+    const mockContext = {
+      ref: 'refs/heads/feat/1.2.3'
+    }
+
+    github.context = mockContext
 
     await main.run()
     expect(runMock).toHaveReturned()
 
     // Verify that all of the core library functions were called correctly
-    expect(debugMock).toHaveBeenNthCalledWith(1, 'Waiting 500 milliseconds ...')
-    expect(debugMock).toHaveBeenNthCalledWith(
-      2,
-      expect.stringMatching(timeRegex)
-    )
-    expect(debugMock).toHaveBeenNthCalledWith(
-      3,
-      expect.stringMatching(timeRegex)
-    )
-    expect(setOutputMock).toHaveBeenNthCalledWith(
+    expect(infoMock).toHaveBeenNthCalledWith(
       1,
-      'time',
-      expect.stringMatching(timeRegex)
+      'Not on release branch, skipping version bump.'
     )
   })
 
-  it('sets a failed status', async () => {
-    // Set the action's inputs as return values from core.getInput()
-    getInputMock.mockImplementation(name => {
-      switch (name) {
-        case 'milliseconds':
-          return 'this is not a number'
-        default:
-          return ''
-      }
+  it('should return and skip bump if the versions are the same', async () => {
+    const mockContext = {
+      ref: 'refs/heads/release/1.2.3',
+      sha: '1234567890abcdef'
+    }
+
+    github.context = mockContext
+
+    editJsonFile.mockReturnValue({
+      get: jest.fn().mockReturnValue('1.2.3')
     })
 
     await main.run()
     expect(runMock).toHaveReturned()
 
-    // Verify that all of the core library functions were called correctly
-    expect(setFailedMock).toHaveBeenNthCalledWith(
+    expect(infoMock).toHaveBeenNthCalledWith(
       1,
-      'milliseconds not a number'
+      'Version already set, skipping bump.'
     )
   })
 
-  it('fails if no input is provided', async () => {
-    // Set the action's inputs as return values from core.getInput()
-    getInputMock.mockImplementation(name => {
-      switch (name) {
-        case 'milliseconds':
-          throw new Error('Input required and not supplied: milliseconds')
-        default:
-          return ''
-      }
+  it('should fail if cannot determine the version from the branch name', async () => {
+    const mockContext = {
+      ref: 'refs/heads/releases/foo',
+      sha: '1234567890abcdef'
+    }
+
+    github.context = mockContext
+
+    await main.run()
+    expect(runMock).toHaveReturned()
+
+    expect(setFailedMock).toHaveBeenNthCalledWith(
+      1,
+      'Could not determine version from branch name'
+    )
+  })
+
+  it('should update package version with the version from the branch name', async () => {
+    const mockContext = {
+      ref: 'refs/heads/release/1.2.3',
+      sha: '1234567890abcdef'
+    }
+
+    github.context = mockContext
+
+    const setMock = jest.fn()
+    const saveMock = jest.fn()
+    editJsonFile.mockReturnValue({
+      get: jest.fn().mockReturnValue('1.2.2'),
+      set: setMock,
+      save: saveMock
     })
 
     await main.run()
     expect(runMock).toHaveReturned()
 
-    // Verify that all of the core library functions were called correctly
-    expect(setFailedMock).toHaveBeenNthCalledWith(
-      1,
-      'Input required and not supplied: milliseconds'
-    )
+    expect(setMock).toHaveBeenCalledWith('version', '1.2.3')
+    expect(saveMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,0 +1,21 @@
+name: Bump package version
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump package version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GB_TOKEN }}
+      - name: Bump version
+        uses: ./
