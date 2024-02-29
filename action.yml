@@ -1,19 +1,13 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
-
-# Define your inputs here.
-inputs:
-  milliseconds:
-    description: 'Your input description here'
-    required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: 'Your output description here'
+name: 'Update Package Version from Release Branch'
+description:
+  'Automatically update the package version based on the branch name when there
+  is a push to a release branch.'
+author: 'David Velásquez'
 
 runs:
   using: node20
   main: dist/index.js
+
+branding:
+  icon: arrow-up-circle
+  color: green
